@@ -1,13 +1,15 @@
 import numpy as np
 from Model.functions import (
     load_and_preprocess_data,
+    create_polynomial_features,
     train_model,
-    evaluate_model,
-    create_polynomial_features
+    evaluate_model
 )
 
-#  VERİYİ YÜKLE
-X, y, X_mean, X_std = load_and_preprocess_data("DataSet/gram_gold_10yrs.csv")
+# LOAD DATA
+X, y, X_mean, X_std, df = load_and_preprocess_data(
+    "DataSet/gram_gold_10yrs.csv"
+)
 
 degrees = range(1, 6)
 splits = [0.7, 0.8, 0.9]
@@ -17,21 +19,24 @@ best_model = None
 best_degree = None
 best_split = None
 
-#  MODEL DENEME
+
+#TRAIN LOOP
+
 for split in splits:
     print(f"\n===== TRAIN SPLIT %{int(split*100)} =====")
 
+    split_index = int(len(X) * split)
+
+    X_train_raw = X[:split_index]
+    X_test_raw = X[split_index:]
+
+    y_train = y[:split_index]
+    y_test = y[split_index:]
+
     for d in degrees:
 
-        X_poly = create_polynomial_features(X, d)
-
-        split_index = int(len(X_poly) * split)
-
-        X_train = X_poly[:split_index]
-        X_test = X_poly[split_index:]
-
-        y_train = y[:split_index]
-        y_test = y[split_index:]
+        X_train = create_polynomial_features(X_train_raw, d)
+        X_test = create_polynomial_features(X_test_raw, d)
 
         model = train_model(X_train, y_train)
 
@@ -45,18 +50,22 @@ for split in splits:
             best_degree = d
             best_split = split
 
-print("\n BEST MODEL")
+
+#BEST MODEL
+
+print("\n===== BEST MODEL =====")
 print(f"Degree: {best_degree}")
 print(f"Split: %{int(best_split*100)}")
 print(f"R2: {best_r2:.4f}")
 
-# SON GÜN TAHMİNİ
-X_best = create_polynomial_features(X, best_degree)
 
-last_point = X_best[-1].reshape(1, -1)
+#  NEXT DAY PREDICTION
 
-prediction = best_model.predict(last_point)
+last_point = X[-1:].copy()
+last_point_poly = create_polynomial_features(last_point, best_degree)
+
+prediction = best_model.predict(last_point_poly)
 
 print("\n============================")
-print("Tomorrow Prediction:", prediction[0])
+print("Next Day Gold Prediction (TL):", prediction[0])
 print("============================")
